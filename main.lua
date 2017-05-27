@@ -25,41 +25,43 @@ function love.load()
 
   shader = love.graphics.newShader(
 [[
-  extern Image offsets; // shift -1..1 encoded as -1..0 in red
-                        // and 0..1 in green.
-                        // which maps to 0..1 for both in GLSL
+  extern Image offsets; // shift -1..1 encoded in 16 bits across the
+                        // red and green channels.
 
   vec4 effect(vec4 color, Image texture, vec2 tc, vec2 sc) {
     float z = (1 - tc.y) + 1;
-    float fx = (Texel(offsets, vec2(0, tc.y)).r / 2) * -1;
-    fx += (Texel(offsets, vec2(0, tc.y)).g / 2);
-    return Texel(texture, vec2(tc.x + fx, tc.y)) / z;
+    float fx = (Texel(offsets, vec2(0, tc.y)).r) - 0.5;
+    fx += (Texel(offsets, vec2(0, tc.y)).g - 0.5) / 254;
+    float fy = (Texel(offsets, vec2(0, tc.y)).b);
+    return Texel(texture, vec2(tc.x + fx, fy)); // divide by z to get night effect
   }
 ]] )
 end
 
 function love.update(dt)
   if (dt > 0.1) then return end
-  time = time + (dt * 10)
+  time = time + (dt * 24)
   updateScanlines ()
 end
 
+function sat01(v)
+  return math.min(1,math.max(0, v))
+end
+
 function updateScanlines ()
+  -- left/right shift is encoded into red and green channels for precision
+  -- TODO: encode virtual 'z' into blue, and shift tc.y based on that.
   for i=0, (screenHeight-1) do
-    local wiggle = math.sin((i+time) / 40)
-    offsetData:setPixel(0, i, math.min(0, wiggle) * -255, math.max(0, wiggle) * 255, 0, 255)
+    local wiggle = (math.sin((i+time) / 40) / 20) + 1
+    local upper = 32258 * wiggle
+    local lower = upper % 254
+    local z = sat01((i) / screenHeight)
+    offsetData:setPixel(0, i, upper / 254, lower, z * 255, 255)
   end
   offsetImg = love.graphics.newImage( offsetData )
 end
 
 function love.draw()
-  -- TODO: draw a lookup texture for the road curvature. x:1, y:height
-  -- send this to the pixel shader and offset directly.
-    local x = love.mouse.getX() / screenWidth
-    local y = love.mouse.getY() / screenHeight
-    --[[shader:send( "sharpness", 1 + (y * 20.0))
-    shader:send( "nearness", y)
-    shader:send( "strength", 1 + (x * 170))]]
     shader:send("offsets", offsetImg)
 
     love.graphics.setShader(shader)
