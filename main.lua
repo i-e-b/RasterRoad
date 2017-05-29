@@ -65,8 +65,7 @@ end
 
 function love.update(dt)
   if (dt > 0.1) then return end
-  time = time + (dt )
-  updateScanlines ()
+  time = time + (dt)
 end
 
 function sat01(v)
@@ -82,12 +81,13 @@ end
 
 function updateScanlines ()
   local y = love.mouse.getY() / screenHeight
+  local x = (2 * love.mouse.getX() / screenWidth)
   -- left/right shift is encoded into red and green channels for precision
   -- virtual 'z' is encoded into blue to shift texture for hills.
   local z = 0
   local gamma = 1.5 * y + 0.5 -- hills < 1 > valleys
   for i=0, (screenHeight-1) do
-    local xupper, xlower = splitBytes(i / screenHeight)
+    local xupper, xlower = splitBytes(x) --i / screenHeight)
 
     z = math.pow(i / screenHeight, gamma)
     local zupper, zlower = splitBytes(z)
@@ -96,7 +96,26 @@ function updateScanlines ()
   offsetImg = love.graphics.newImage( offsetData )
 end
 
+
+function drawCar ()
+  local x = love.mouse.getX()
+  local y = screenHeight - 40
+
+  love.graphics.setColor(0, 0, 0, 100)
+  love.graphics.rectangle("fill", x-10, y+17, 70, 14)
+
+  love.graphics.setColor(244, 0, 0, 255)
+  love.graphics.rectangle("fill", x, y, 40, 20)
+
+  love.graphics.setColor(0, 0, 0, 255)
+  love.graphics.rectangle("fill", x, y-5, 10, 30)
+  love.graphics.rectangle("fill", x+40, y-5, 10, 30)
+end
+
 function love.draw()
+  love.graphics.setColor(255, 255, 255, 255)
+  updateScanlines()
+
   love.graphics.setBackgroundColor( 112, 159, 237 )
   shader:send("offsets", offsetImg)
   shader:send("movement", time * 3) -- 10 x time is abut the limit.
@@ -107,4 +126,6 @@ function love.draw()
   --mesh:setTexture( offsetImg )
   love.graphics.draw(mesh, 0, 0)
   love.graphics.setShader()
+
+  drawCar()
 end
