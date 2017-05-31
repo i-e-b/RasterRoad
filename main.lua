@@ -42,8 +42,8 @@ function love.load()
     float haze = pow((1 - tc.y) + 1, fog);
 
     // X offset, for left right curvature of road
-    float fx = (Texel(offsets, vec2(0, tc.y)).r) - 0.5;
-    fx += (Texel(offsets, vec2(0, tc.y)).g - 0.5) / 254;
+    float fx = (Texel(offsets, vec2(0, tc.y)).r * 2) - 1;
+    fx += (Texel(offsets, vec2(0, tc.y)).g) / 127;
 
     // Y offset, to simulate Z position of road
     float fy = (Texel(offsets, vec2(0, tc.y)).b) * 2;
@@ -68,8 +68,14 @@ function love.update(dt)
   time = time + (dt)
 end
 
+-- saturate value between 0 and 1
 function sat01(v)
   return math.min(1,math.max(0, v))
+end
+
+-- saturate value between 0 and 2
+function sat02(v)
+  return math.min(2,math.max(0, v))
 end
 
 -- split a number between two bytes
@@ -81,16 +87,33 @@ end
 
 function updateScanlines ()
   local y = love.mouse.getY() / screenHeight
-  local x = (2 * love.mouse.getX() / screenWidth)
-  -- left/right shift is encoded into red and green channels for precision
-  -- virtual 'z' is encoded into blue to shift texture for hills.
+  local carPos = (2 * love.mouse.getX() / screenWidth) - 1 -- should be affected by steering
+
   local z = 0
+  local x = 1
+  local dx = 0
+  local scale = 0.000001 -- curves are sensitive!
   local gamma = 1.5 * y + 0.5 -- hills < 1 > valleys
-  for i=0, (screenHeight-1) do
-    local xupper, xlower = splitBytes(x) --i / screenHeight)
+
+  for i=(screenHeight-1),0,-1 do -- bottom to top is near to far.
+    local d = (screenHeight - i) / screenHeight -- z in 0..1
+
+    x = x + dx
+    local xupper, xlower = splitBytes(sat02(x + carPos))
+
+    -- test: S-bend with a straight afterwards
+    -- TODO: read these out of a distance/cuvature list
+    if (d < 0.2) then
+      -- straight
+    elseif (d < 0.5) then
+      dx = dx + (5 * scale) -- curve left
+    else
+      dx = dx - (5 * scale) -- curve right
+    end
 
     z = math.pow(i / screenHeight, gamma)
     local zupper, zlower = splitBytes(z)
+    -- encode curve shift into red+green. hill height into blue+alpha
     offsetData:setPixel(0, i, xupper, xlower, zupper, zlower)
   end
   offsetImg = love.graphics.newImage( offsetData )
