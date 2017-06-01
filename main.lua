@@ -85,7 +85,7 @@ function splitBytes(n)
   return upper / 254, lower
 end
 
-function updateScanlines ()
+function updateScanlines (position)
   local y = love.mouse.getY() / screenHeight
   local carPos = (2 * love.mouse.getX() / screenWidth) - 1 -- should be affected by steering
 
@@ -96,19 +96,21 @@ function updateScanlines ()
   local gamma = 1.5 * y + 0.5 -- hills < 1 > valleys
 
   for i=(screenHeight-1),0,-1 do -- bottom to top is near to far.
-    local d = (screenHeight - i) / screenHeight -- z in 0..1
+    local fz = 0.5 + (i / screenHeight)
+    local d = (position / 10) + ((screenHeight - i) / screenHeight)
 
-    x = x + dx
-    local xupper, xlower = splitBytes(sat02(x + carPos))
+    x = x + (dx*fz)
+    local xupper, xlower = splitBytes(sat02((x + carPos)))
 
     -- test: S-bend with a straight afterwards
     -- TODO: read these out of a distance/cuvature list
-    if (d < 0.2) then
-      -- straight
-    elseif (d < 0.5) then
-      dx = dx + (5 * scale) -- curve left
+    if (d < 2) then
+    elseif (d < 2.5) then
+      dx = dx + (7 * scale) -- curve left
+    elseif (d < 3.9) then
+      dx = dx - (3 * scale) -- curve right
     else
-      dx = dx - (5 * scale) -- curve right
+      -- straight
     end
 
     z = math.pow(i / screenHeight, gamma)
@@ -136,12 +138,13 @@ function drawCar ()
 end
 
 function love.draw()
+  local position = time * 4
   love.graphics.setColor(255, 255, 255, 255)
-  updateScanlines()
+  updateScanlines(position)
 
   love.graphics.setBackgroundColor( 112, 159, 237 )
   shader:send("offsets", offsetImg)
-  shader:send("movement", time * 3) -- 10 x time is abut the limit.
+  shader:send("movement", position) -- 10 x time is abut the limit.
   shader:send("fog", 0.3)
 
   love.graphics.setShader(shader)
