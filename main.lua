@@ -104,10 +104,11 @@ function updateScanlines (position)
 
     -- test: S-bend with a straight afterwards
     -- TODO: read these out of a distance/cuvature list
+    d = d % 10
     if (d < 2) then
-    elseif (d < 2.5) then
+    elseif (d < 4) then
       dx = dx + (7 * scale) -- curve left
-    elseif (d < 3.9) then
+    elseif (d < 6) then
       dx = dx - (3 * scale) -- curve right
     else
       -- straight
@@ -144,7 +145,7 @@ function love.draw()
 
   love.graphics.setBackgroundColor( 112, 159, 237 )
   shader:send("offsets", offsetImg)
-  shader:send("movement", position) -- 10 x time is abut the limit.
+  shader:send("movement", position) -- 10 x time is about the limit.
   shader:send("fog", 0.3)
 
   love.graphics.setShader(shader)
